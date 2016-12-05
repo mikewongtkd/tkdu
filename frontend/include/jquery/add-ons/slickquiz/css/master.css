@@ -7,9 +7,8 @@ html {
 
 body {
     width: 800px;
-    margin: 0 auto;
+    margin: 40px auto;
     border: 2px solid #ccc;
-    border-top: none;
     background: #fff;
     padding: 20px;
     font-family: Trebuchet, Arial,Helvetica,sans-serif;
@@ -121,10 +120,10 @@ ul.responses li p span {
     font-weight: bold;
     font-size: 18px;
 }
-.complete ul.answers li.correct, ul.responses li.correct p span {
+.complete ul.answers li.correct, ul.responses li.correct span {
     color: #6C9F2E;
 }
-ul.responses li.incorrect p span {
+ul.responses li.incorrect span {
     color: #B5121B;
 }
 
