@@ -22,7 +22,7 @@
                 backButtonText: '',
                 completeQuizText: '',
                 tryAgainText: '',
-                questionCountText: 'Question %current of %total',
+                questionCountText: 'Question %current of %total total (%ask in this section)',
                 preventUnansweredText: 'You must select at least one answer.',
                 questionTemplateText:  '%count. %text',
                 scoreTemplateText: '%score / %total',
@@ -148,25 +148,11 @@
         }
         // End of deprecation reassignment
 
-
         plugin.config = $.extend(defaults, options);
 
         // Set via json option or quizJSON variable (see slickQuiz-config.js)
         var quizValues = (plugin.config.json ? plugin.config.json : typeof quizJSON != 'undefined' ? quizJSON : null);
-
-        // Get questions, possibly sorted randomly
-        var questions = plugin.config.randomSortQuestions ?
-                        quizValues.questions.sort(function() { return (Math.round(Math.random())-0.5); }) :
-                        quizValues.questions;
-
-        // Count the number of questions
-        var questionCount = questions.length;
-
-        // Select X number of questions to load if options is set
-        if (plugin.config.numberOfQuestions && questionCount >= plugin.config.numberOfQuestions) {
-            questions = questions.slice(0, plugin.config.numberOfQuestions);
-            questionCount = questions.length;
-        }
+        var sections = quizValues.sections;
 
         // some special private/internal methods
         var internal = {method: {
@@ -196,6 +182,8 @@
             }
         }};
 
+        plugin.data = {};
+
         plugin.method = {
             // Sets up the questions and answers based on above array
             setupQuiz: function(options) { // use 'options' object to pass args
@@ -206,7 +194,7 @@
 
                 $quizName.hide().html(plugin.config.nameTemplateText
                     .replace('%name', quizValues.info.name) ).fadeIn(1000, kN(key,1));
-                $quizHeader.hide().prepend($('<div class="quizDescription">' + quizValues.info.main + '</div>')).fadeIn(1000, kN(key,2));
+                $quizHeader.hide().prepend($('<div class="quizDescription">' + quizValues.info.main + '<h2></h2><p class="section-questions"></p></div>')).fadeIn(1000, kN(key,2));
                 $quizResultsCopy.append(quizValues.info.results);
 
                 // add retry button to results view, if enabled
@@ -218,19 +206,41 @@
                 var quiz  = $('<ol class="' + questionGroupClass + '"></ol>'),
                     count = 1;
 
-                // Loop through questions object
-                for (i in questions) {
-                    if (questions.hasOwnProperty(i)) {
+                plugin.data.questions = [];
+
+                for (i in sections) {
+                    if( ! sections.hasOwnProperty( i )) { continue; }
+                    var section = sections[ i ];
+
+                    // Get questions, possibly sorted randomly
+                    var questions = plugin.config.randomSortQuestions ?
+                                    section.questions.sort(function() { return (Math.round(Math.random())-0.5); }) :
+                                    section.questions;
+
+                    // Count the number of questions
+                    var questionCount = questions.length;
+
+                    // Select X number of questions to load if options is set
+                    if (section.ask && questionCount >= section.ask) {
+                        questions = questions.slice(0, section.ask);
+                        questionCount = plugin.config.numberOfQuestions;
+                    }
+
+                    plugin.data.questions = plugin.data.questions.concat( questions );
+
+                    // Loop through questions object
+                    for (i in questions) {
+                        if ( ! questions.hasOwnProperty(i)) { continue; }
                         var question = questions[i];
 
-                        var questionHTML = $('<li class="' + questionClass +'" id="question' + (count - 1) + '"></li>');
+                        var questionHTML = $('<li class="' + questionClass +'" id="question' + (count - 1) + '" section="' + section.name + '" ask="' + section.ask + '"></li>');
 
                         if (plugin.config.displayQuestionCount) {
                             questionHTML.append('<div class="' + questionCountClass + '">' +
                                 plugin.config.questionCountText
                                     .replace('%current', '<span class="current">' + count + '</span>')
-                                    .replace('%total', '<span class="total">' +
-                                        questionCount + '</span>') + '</div>');
+                                    .replace('%total', '<span class="total">' + questionCount + '</span>' )
+                                    .replace('%ask', section.ask ) + '</div>')
                         }
 
                         var formatQuestion = '';
@@ -245,11 +255,10 @@
                         // Count the number of true values
                         var truths = 0;
                         for (i in question.a) {
-                            if (question.a.hasOwnProperty(i)) {
-                                answer = question.a[i];
-                                if (answer.correct) {
-                                    truths++;
-                                }
+                            if ( ! question.a.hasOwnProperty(i)) { continue; }
+                            answer = question.a[i];
+                            if (answer.correct) {
+                                truths++;
                             }
                         }
 
@@ -268,26 +277,25 @@
                             inputName     = $element.attr('id') + '_question' + (count - 1),
                             inputType     = checkbox ? 'checkbox' : 'radio';
 
-                        if( count == quizValues.questions.length ) {
+                        if( count == section.questions.length ) {
                             nextQuestionClass = nextQuestionClass + ' ' + lastQuestionClass;
                         }
 
                         for (i in answers) {
-                            if (answers.hasOwnProperty(i)) {
-                                answer   = answers[i],
-                                optionId = inputName + '_' + i.toString();
+                            if ( ! answers.hasOwnProperty(i)) { continue; }
+                            answer   = answers[i],
+                            optionId = inputName + '_' + i.toString();
 
-                                // If question has >1 true answers and is not a select any, use checkboxes; otherwise, radios
-                                var input = '<input id="' + optionId + '" name="' + inputName +
-                                            '" type="' + inputType + '" /> ';
+                            // If question has >1 true answers and is not a select any, use checkboxes; otherwise, radios
+                            var input = '<input id="' + optionId + '" name="' + inputName +
+                                        '" type="' + inputType + '" /> ';
 
-                                var optionLabel = '<label for="' + optionId + '">' + answer.option + '</label>';
+                            var optionLabel = '<label for="' + optionId + '">' + answer.option + '</label>';
 
-                                var answerContent = $('<li></li>')
-                                    .append(input)
-                                    .append(optionLabel);
-                                answerHTML.append(answerContent);
-                            }
+                            var answerContent = $('<li></li>')
+                                .append(input)
+                                .append(optionLabel);
+                            answerHTML.append(answerContent);
                         }
 
                         // Append answers to question
@@ -297,8 +305,8 @@
                         if (plugin.config.perQuestionResponseMessaging || plugin.config.completionResponseMessaging) {
                             // Now let's append the correct / incorrect response messages
                             var responseHTML = $('<ul class="' + responsesClass + '"></ul>');
-                            responseHTML.append('<li class="' + correctResponseClass + '">' + question.correct + '</li>');
-                            responseHTML.append('<li class="' + incorrectResponseClass + '">' + question.incorrect + '</li>');
+                            responseHTML.append('<li class="' + correctResponseClass + '"><span>Correct</span><p>' + question.correct + '</p></li>');
+                            responseHTML.append('<li class="' + incorrectResponseClass + '"><span>Incorrect</span><p>' + question.incorrect + '</p></li>');
 
                             // Append responses to question
                             questionHTML.append(responseHTML);
@@ -354,6 +362,7 @@
                 function start(options) {
                     var firstQuestion = $(_element + ' ' + _questions + ' li').first();
                     if (firstQuestion.length) {
+                        $( '.quizDescription h2' ).html( firstQuestion.attr( 'section' ));
                         firstQuestion.fadeIn(500, function () {
                             if (options && options.callback) options.callback ();
                         });
@@ -423,6 +432,7 @@
                     answerLIs     = questionLI.find(_answers + ' li'),
                     answerSelects = answerLIs.find('input:checked'),
                     questionIndex = parseInt(questionLI.attr('id').replace(/(question)/, ''), 10),
+                    questions     = plugin.data.questions,
                     answers       = questions[questionIndex].a,
                     selectAny     = questions[questionIndex].select_any ? questions[questionIndex].select_any : false;
 
@@ -518,6 +528,7 @@
 
                 if (nextQuestion.length) {
                     currentQuestion.fadeOut(300, function(){
+                        $( '.quizDescription h2' ).html( nextQuestion.attr( 'section' ));
                         nextQuestion.find(_prevQuestionBtn).show().end().fadeIn(500, kN(key,1));
                         if (!nextQuestion.find(_prevQuestionBtn).show().end().length) kN(key,1).apply (null, []); // 1st notch on key must be passed even if there's no "back" button
                     });
@@ -593,6 +604,7 @@
                 keyNotch = internal.method.getKeyNotch; // a function that returns a jQ animation callback function
                 kN = keyNotch; // you specify the notch, you get a callback function for your animation
 
+                var questionCount = plugin.data.questions.length;
                 var score        = $(_element + ' ' + _correct).length,
                     displayScore = score;
                 if (plugin.config.scoreAsPercentage) {
@@ -657,6 +669,7 @@
 
             // Calculates knowledge level based on number of correct answers
             calculateLevel: function(correctAnswers) {
+                var questionCount = plugin.data.questions.length;
                 var percent = (correctAnswers / questionCount).toFixed(2),
                     level   = null;
 
