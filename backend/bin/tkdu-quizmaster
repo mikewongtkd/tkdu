@@ -1,0 +1,21 @@
+#! /usr/bin/perl
+use lib qw( /usr/local/tkdu/lib ../lib );
+use Clone qw( clone );
+use Digest::SHA1 qw( sha1_hex );
+use Data::Dumper;
+use Data::Structure::Util qw( unbless );
+use JSON::XS;
+use Mojolicious::Lite;
+use Try::Tiny;
+
+websocket '/tkduniversity' => sub {
+	my $self    = shift;
+	my $manager = new 
+	$self->inactivity_timeout( 3600 ); # 1 hour
+
+	foreach my $name (qw( firstname lastname rank course chapter )) {
+		my $value = $self->cookie( $name );
+		$request->{ cookie }{ $name } = $value if defined $value;
+	}
+
+}
