@@ -1,4 +1,5 @@
+.DS_Store
 .htaccess
 .htpasswd
 index.html
-*.pdf
+tmau.*.pdf
