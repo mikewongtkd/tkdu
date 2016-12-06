@@ -1,9 +1,6 @@
 #! /usr/bin/perl
 use lib qw( /usr/local/tkdu/lib ../lib );
-use Clone qw( clone );
-use Digest::SHA3 qw( sha3_512_hex );
 use Data::Dumper;
-use Data::Structure::Util qw( unbless );
 use JSON::XS;
 use Mojolicious::Lite;
 use TKDU::RequestHandler;
@@ -14,20 +11,9 @@ post '/tkduniversity' => sub {
 	my $manager = new TKDU::RequestHandler();
 	my $json    = new JSON::XS();
 	my $request = $json->decode( $self->req->body );
-	my $db      = "/usr/local/tkdu/db/qa/$request->{ subject }.json";
 
 	try {
-		die "Course subject '$request->{ subject }' not found in database" unless -e $db;
-		my $contents = '';
-		open FILE, $db or die "Can't read course subject '$request->{ subject }' in database";
-		while( <FILE> ) {
-			chomp;
-			$contents .= $_;
-		}
-		close FILE;
-
-		$self->render( text => $contents );
-
+		$self->render( text => $manager->handle( $request ));
 	} catch {
 		chomp;
 		$self->render( text => sprintf( '{"error":"%s"}', $_ ));

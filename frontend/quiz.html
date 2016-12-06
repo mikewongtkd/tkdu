@@ -36,26 +36,67 @@
         <script src="./include/jquery/add-ons/slickquiz/js/slickQuiz.js"></script>
         <script>
 			$( function() {
-				var subject = $.url().param( 'subject' );
-				var request = { data: { message: 'Hello World', subject: subject }};
-				request.json = JSON.stringify( request.data );
-				$.post( "http://localhost/tkduniversity/request", request.json )
-					.done(( data ) => {
-						data = JSON.parse( data );
-						if( data.error ) {
-							$( '.quizHeader' ).html( '<h1>Quiz for Subject ' + subject.toUpperCase() + ' Not Found</h1>' );
-						} else {
-							$( '#slickQuiz' ).slickQuiz({
-								json: data,
-								numberOfQuestions: 25,
-								randomSortQuestions: true,
-								randomSortAnswers: true,
+				var url  = "http://localhost/tkduniversity/request";
+				var quiz = {
+					init: function( questions ) {
+						$( '#slickQuiz' ).slickQuiz({
+							json: questions,
+							numberOfQuestions: 25,
+							randomSortQuestions: true,
+							randomSortAnswers: true,
+							events: { onCompleteQuiz: function( options ) { quiz.stop( options ); }}
+						});
+					},
+					start: function() {
+						var subject = $.url().param( 'subject' );
+						var request = { data: { action: 'read', subject: subject }}; request.json = JSON.stringify( request.data );
+						$.post( url, request.json )
+							.done( function( data ) {
+								var questions = JSON.parse( data );
+								if( questions.error ) {
+									$( '.quizHeader' ).html( '<h1>Quiz for Subject ' + subject.toUpperCase() + ' Not Found</h1>' );
+									console.log( questions );
+								} else {
+									quiz.init( questions );
+								}
+							})
+							.fail(( error ) => {
+								$( '.quizHeader' ).html( '<h1>Network Error</h1>' );
+								console.log( error );
 							});
-						}
-					})
-					.fail(( error ) => {
-						console.log( error );
-					});
+					},
+					stop: function( options ) {
+						var k = parseFloat( options.score );
+						var n = parseFloat( options.questionCount );
+						if( k/n > 0.8 ) { return; }
+
+						// Request user name
+						var name   = $( '<input type="text" placeholder="Your Name">' );
+						var button = $( '<button type="button">Get Certificate</button>' );
+						$( '.quizResults' ).append( name, button );
+						button.click( function( ev ) {
+							var subject = $.url().param( 'subject' );
+							var request = { data: { action: 'write', name: name.val(), subject: subject }}; request.json = JSON.stringify( request.data );
+							$.post( url, request.json )
+								.done( function( data ) {
+									var response;
+									// var response = JSON.parse( data );
+									if( response.error ) {
+										$( '.quizHeader' ).html( '<h1>Quiz for Subject ' + subject.toUpperCase() + ' Not Found</h1>' );
+										console.log( response );
+									} else {
+										$( '.quizResults' ).append( response.certificate );
+									}
+								})
+								.fail(( error ) => {
+									$( '.quizHeader' ).html( '<h1>Network Error</h1>' );
+									console.log( error );
+								});
+						});
+					}
+				};
+
+				quiz.start();
 			});
 		</script>
     </body>
