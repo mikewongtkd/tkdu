@@ -1,7 +1,7 @@
 #! /usr/bin/perl
 use lib qw( /usr/local/tkdu/lib ../lib );
 use Clone qw( clone );
-use Digest::SHA1 qw( sha1_hex );
+use Digest::SHA3 qw( sha3_512_hex );
 use Data::Dumper;
 use Data::Structure::Util qw( unbless );
 use JSON::XS;
@@ -12,7 +12,29 @@ use Try::Tiny;
 post '/tkduniversity' => sub {
 	my $self    = shift;
 	my $manager = new TKDU::RequestHandler();
+	my $json    = new JSON::XS();
+	my $request = $json->decode( $self->req->body );
+	my $db      = "/usr/local/tkdu/db/qa/$request->{ subject }.json";
 
-	my $data    = $self->req->body;
-	print STDERR $data;
-}
+	try {
+		die "Course subject '$request->{ subject }' not found in database" unless -e $db;
+		my $contents = '';
+		open FILE, $db or die "Can't read course subject '$request->{ subject }' in database";
+		while( <FILE> ) {
+			chomp;
+			$contents .= $_;
+		}
+		close FILE;
+
+		$self->render( text => $contents );
+
+	} catch {
+		chomp;
+		$self->render( text => sprintf( '{"error":"%s"}', $_ ));
+	}
+};
+
+mkdir '/var/log/tkdu' unless -e '/var/log/tkdu';
+app->config( hypnotoad => { listen => [ 'http://*:3280' ], pid_file => '/var/run/tkdu-quizmaster.pid' });
+app->log( new Mojo::Log( path => '/var/log/tkdu/quizmaster.log', level => 'error' ));
+app->start();

@@ -32,15 +32,30 @@
         </div>
 
         <script src="./include/jquery/js/jquery.min.js"></script>
-        <script src="./db/qa/fit110.js"></script>
+        <script src="./include/jquery/add-ons/purl/purl.js"></script>
         <script src="./include/jquery/add-ons/slickquiz/js/slickQuiz.js"></script>
         <script>
 			$( function() {
-				$( '#slickQuiz' ).slickQuiz({
-					numberOfQuestions: 25,
-					randomSortQuestions: true,
-					randomSortAnswers: true,
-				});
+				var subject = $.url().param( 'subject' );
+				var request = { data: { message: 'Hello World', subject: subject }};
+				request.json = JSON.stringify( request.data );
+				$.post( "http://localhost/tkduniversity/request", request.json )
+					.done(( data ) => {
+						data = JSON.parse( data );
+						if( data.error ) {
+							$( '.quizHeader' ).html( '<h1>Quiz for Subject ' + subject.toUpperCase() + ' Not Found</h1>' );
+						} else {
+							$( '#slickQuiz' ).slickQuiz({
+								json: data,
+								numberOfQuestions: 25,
+								randomSortQuestions: true,
+								randomSortAnswers: true,
+							});
+						}
+					})
+					.fail(( error ) => {
+						console.log( error );
+					});
 			});
 		</script>
     </body>
