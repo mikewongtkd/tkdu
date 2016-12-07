@@ -4,6 +4,9 @@ use Digest::SHA1 qw( sha1_hex );
 use Imager::QRCode;
 use MIME::Base64;
 
+
+our $PATH = "/usr/local/tkdu/data/certificates";
+
 # ============================================================
 sub new {
 # ============================================================
@@ -18,9 +21,12 @@ sub init {
 # ============================================================
 	my $self            = shift;
 	$self->{ name }     = shift;
-	$self->{ course }   = shift;
+	$self->{ course }   = uc shift;
 	$self->{ title }    = shift;
-	$self->{ date }     = time2str( "%o of %B, %Y", time );
+	$self->{ time }     = time;
+	$self->{ date }     = time2str( "%o of %B, %Y", $self->{ time } );
+	$self->{ logdate }  = time2str( "%Y-%m-%d %H:%M:%S", $self->{ time } );
+	$self->{ sha1 }     = sha1_hex( join( "\t", @{$self}{ qw( name course title date ) }));
 	$self->{ qrcode }   = $self->qr();
 	$self->{ template } =<<EOF;
 <?xml version="1.0" encoding="utf-8"?>
@@ -205,15 +211,30 @@ EOF
 sub qr {
 # ============================================================
 	my $self   = shift;
-	my $string = 'http://pyongwon.sfsu.edu/tkduniversity/request?certificate=' . sha1_hex( join( ";", @{$self}{ qw( name course title date ) }));
+	my $string = "http://pyongwon.sfsu.edu/tkduniversity/request/certificate/$self->{ sha1 }";
 	my $qrcode = new Imager::QRCode();
 	my $image  = $qrcode->plot( $string );
 	my $bmp    = undef;
 
 	$image->write( data => \$bmp, type => 'bmp' );
-	my $data   = encode_base64( $bmp );
+	my $data = encode_base64( $bmp );
+	$data =~ s/\s//g;
 
 	return $data;
+}
+
+# ============================================================
+sub code {
+# ============================================================
+	my $self = shift;
+	return $self->{ sha1 };
+}
+
+# ============================================================
+sub date {
+# ============================================================
+	my $self = shift;
+	return $self->{ logdate };
 }
 
 # ============================================================
@@ -229,6 +250,17 @@ sub svg {
 	$svg =~ s/\%qr\%/$self->{ qrcode }/;
 
 	return $svg;
+}
+
+# ============================================================
+sub write {
+# ============================================================
+	my $self = shift;
+	my $svg  = $self->svg();
+	my $file = "$PATH/$self->{ sha1 }.svg";
+	open FILE, ">$file" or die "Can't write to '$file' $!";
+	print FILE $svg;
+	close FILE;
 }
 
 1;

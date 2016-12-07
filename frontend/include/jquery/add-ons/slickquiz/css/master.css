@@ -138,3 +138,23 @@ ul.responses li.incorrect span {
     clear: both;
     margin-top: 20px;
 }
+
+#certificate-name {
+	float: left;
+	border: 1px solid #ccc;
+	padding: 8px;
+	font-size: 14pt;
+	width: 320px;
+}
+
+#certificateResults {
+	padding: 20px;
+}
+
+#get-certificate {
+	font-size: 14pt;
+	padding: 7px 15px;
+	margin-left: 12px;
+}
+
+

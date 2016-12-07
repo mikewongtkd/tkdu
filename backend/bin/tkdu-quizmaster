@@ -1,12 +1,15 @@
 #! /usr/bin/perl
 use lib qw( /usr/local/tkdu/lib ../lib );
 use Data::Dumper;
+use File::Slurp;
 use JSON::XS;
 use Mojolicious::Lite;
 use TKDU::RequestHandler;
 use Try::Tiny;
 
+# ============================================================
 post '/tkduniversity' => sub {
+# ============================================================
 	my $self    = shift;
 	my $manager = new TKDU::RequestHandler();
 	my $json    = new JSON::XS();
@@ -14,6 +17,23 @@ post '/tkduniversity' => sub {
 
 	try {
 		$self->render( text => $manager->handle( $request ));
+	} catch {
+		chomp;
+		$self->render( text => sprintf( '{"error":"%s"}', $_ ));
+	}
+};
+
+# ============================================================
+get '/tkduniversity/certificate/:sha1' => sub {
+# ============================================================
+	my $self    = shift;
+	my $manager = new TKDU::RequestHandler();
+	my $sha1    = $self->param( 'sha1' );
+	my $request = { action => 'certificate', sha1 => $sha1 };
+
+	try {
+		my $certificate = $manager->handle( $request );
+		$self->render( data => $certificate, format => 'svg' );
 	} catch {
 		chomp;
 		$self->render( text => sprintf( '{"error":"%s"}', $_ ));

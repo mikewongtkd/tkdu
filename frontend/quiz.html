@@ -31,74 +31,109 @@
             </div>
         </div>
 
+        <div id="certificateResults">
+            <h2>Please Enter Your Name to Get Your Certificate</h2>
+            <input type="text" placeholder="Your Name" id="certificate-name">
+            <button type="button" class="button" id="get-certificate">Get Certificate</button>
+
+            <div id="certificate"></div>
+        </div>
+
         <script src="./include/jquery/js/jquery.min.js"></script>
         <script src="./include/jquery/add-ons/purl/purl.js"></script>
         <script src="./include/jquery/add-ons/slickquiz/js/slickQuiz.js"></script>
         <script>
-			$( function() {
-				var url  = "http://pyongwon.sfsu.edu/tkduniversity/request";
-				var quiz = {
-					init: function( questions ) {
-						$( '#slickQuiz' ).slickQuiz({
-							json: questions,
-							numberOfQuestions: 25,
-							randomSortQuestions: true,
-							randomSortAnswers: true,
-							events: { onCompleteQuiz: function( options ) { quiz.stop( options ); }}
-						});
-					},
-					start: function() {
-						var subject = $.url().param( 'subject' );
-						var request = { data: { action: 'read', subject: subject }}; request.json = JSON.stringify( request.data );
-						$.post( url, request.json )
-							.done( function( data ) {
-								var questions = JSON.parse( data );
-								if( questions.error ) {
-									$( '.quizHeader' ).html( '<h1>Quiz for Subject ' + subject.toUpperCase() + ' Not Found</h1>' );
-									console.log( questions );
-								} else {
-									quiz.init( questions );
-								}
-							})
-							.fail(( error ) => {
-								$( '.quizHeader' ).html( '<h1>Network Error</h1>' );
-								console.log( error );
-							});
-					},
-					stop: function( options ) {
-						var k = parseFloat( options.score );
-						var n = parseFloat( options.questionCount );
-						if( k/n > 0.8 ) { return; }
+            $( function() {
+                var url     = "http://pyongwon.sfsu.edu/tkduniversity/request";
+                var getCert = $( '#get-certificate' );
+                var name    = $( '#certificate-name' );
+                var quiz    = {
+                    init: function( questions ) {
+                        $( '#slickQuiz' ).slickQuiz({
+                            json: questions,
+                            numberOfQuestions: 25,
+                            randomSortQuestions: true,
+                            randomSortAnswers: true,
+                            events: { onCompleteQuiz: function( options ) { console.log( options ); quiz.stop( options ); }}
+                        });
+                    },
+                    start: function() {
+                        var subject = $.url().param( 'subject' );
+                        var request = { data: { action: 'read', subject: subject }}; request.json = JSON.stringify( request.data );
+                        $( '#certificateResults' ).hide();
+                        $.post( url, request.json )
+                            .done( function( data ) {
+                                var questions = JSON.parse( data );
+                                if( questions.error ) {
+                                    $( '.quizHeader' ).html( '<h1>Quiz for Subject ' + subject.toUpperCase() + ' Not Found</h1>' );
+                                    console.log( questions );
+                                } else {
+                                    quiz.init( questions );
+                                }
+                            })
+                            .fail(( error ) => {
+                                $( '.quizHeader' ).html( '<h1>Network Error</h1>' );
+                                console.log( error );
+                            });
+                    },
+                    stop: function( options ) {
+                        var k = parseFloat( options.score );
+                        var n = parseFloat( options.questionCount );
+                        if( k/n < 0.8 ) { return; }
 
-						// Request user name
-						var name   = $( '<input type="text" placeholder="Your Name">' );
-						var button = $( '<button type="button">Get Certificate</button>' );
-						$( '.quizResults' ).append( name, button );
-						button.click( function( ev ) {
-							var subject = $.url().param( 'subject' );
-							var request = { data: { action: 'write', name: name.val(), subject: subject }}; request.json = JSON.stringify( request.data );
-							$.post( url, request.json )
-								.done( function( data ) {
-									var response;
-									// var response = JSON.parse( data );
-									if( response.error ) {
-										$( '.quizHeader' ).html( '<h1>Quiz for Subject ' + subject.toUpperCase() + ' Not Found</h1>' );
-										console.log( response );
-									} else {
-										$( '.quizResults' ).append( response.certificate );
-									}
-								})
-								.fail(( error ) => {
-									$( '.quizHeader' ).html( '<h1>Network Error</h1>' );
-									console.log( error );
-								});
-						});
-					}
-				};
+                        $( '#certificateResults' ).fadeIn();
+                        name.focus();
 
-				quiz.start();
-			});
-		</script>
+                        // Request user name
+                        var requestCert = function( ev ) {
+                            if( ! name.val() ) { return; };
+
+                            // ===== HIDE EVERYTHING
+                            $( '#certificateResults h2' ).hide();
+                            name.hide();
+                            getCert.hide();
+
+                            // ===== GET CERTIFICATE
+                            var subject = $.url().param( 'subject' );
+                            var title   = $( '#slickQuiz-name' ).text().split( /\s+-\s+/, 2 )[ 1 ];
+                            var request = { data: { action: 'write', name: name.val(), subject: subject, title: title, score: options.score, count: options.questionCount }}; request.json = JSON.stringify( request.data );
+                            $.post( url, request.json )
+                                .done( function( data ) {
+                                    var response = JSON.parse( data );
+                                    if( response.error ) {
+                                        $( '.quizHeader' ).html( '<h1>Quiz for Subject ' + subject.toUpperCase() + ' Not Found</h1>' );
+                                        console.log( response );
+                                    } else {
+                                        $( '#certificate' ).empty().append( response.certificate );
+                                        $( '#certificate' ).click( function() {
+                                            var svg = {
+                                                file: 'certificate-' + subject + '-' + name.val().toLowerCase().replace( /\s/g, '-' ) + '.svg',
+                                                content : unescape( $( '#certificate svg' )[ 0 ].outerHTML )
+                                            };
+                                            var a      = document.createElement( 'a' );
+                                            a.href     = 'data:image/svg+xml;utf8,' + svg.content;
+                                            a.download = svg.file;
+                                            a.target   = '_blank',
+                                            document.body.appendChild( a );
+                                            a.click();
+                                            document.body.removeChild( a );
+                                        });
+                                    }
+                                })
+                                .fail(( error ) => {
+                                    $( '.quizHeader' ).html( '<h1>Network Error</h1>' );
+                                    console.log( error );
+                                });
+                        };
+
+                        getCert.click( requestCert );
+                        name.on( "keydown", function( ev ) { if( ev.which == 13 ) { requestCert(); } });
+                    }
+                };
+
+                quiz.start();
+            });
+        </script>
     </body>
 </html>
 
