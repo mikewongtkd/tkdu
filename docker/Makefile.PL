@@ -47,10 +47,10 @@ sub get_free_port {
 	# ===== FIND A FREE PORT
 	my $free       = 1;
 	my $attempts   = 0;
-	my $max        = 1000;
-	my $port       = 3333;
+	my $max        = 100;
+	my $port       = 3380;
 	
-	foreach my $try ( 3333 .. 4333 ) {
+	foreach my $try ( $port .. $port + $max ) {
 		$port = $try;
 
 		# The port is free if none of the containers uses that host port
@@ -108,7 +108,7 @@ stop:
 	docker stop tkdu-local || true
 
 clean: stop
-	docker image rm tkdu:$version
+	docker image rm tkdu:$version || true
 
 EOF
 	close $fh;
